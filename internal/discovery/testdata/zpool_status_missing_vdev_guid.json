@@ -1,0 +1,17 @@
+{
+  "pools": {
+    "tank": {
+      "name": "tank",
+      "guid": 1,
+      "state": "ONLINE",
+      "vdevs": {
+        "disk-a": {
+          "name": "disk-a",
+          "vdev_type": "disk",
+          "state": "ONLINE",
+          "path": "/dev/sda"
+        }
+      }
+    }
+  }
+}

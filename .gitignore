@@ -1,0 +1,6 @@
+/bin/
+*.plan.json
+*.test
+coverage.out
+/.agents/
+/.codex/

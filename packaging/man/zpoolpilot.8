@@ -1,0 +1,431 @@
+.TH ZPOOLPILOT 8 "November 2026" "ZpoolPilot 0.1.0-alpha.1" "System Administration"
+.SH STATUS
+Alpha source. Limited loop-backed VM and service validation is recorded in
+/usr/share/doc/zpoolpilot/testing.md. Boot-recovery and hardware validation
+remain pending. Storage-changing workflows are not ready for production use.
+.SH NAME
+zpoolpilot \- safety-focused OpenZFS monitoring and storage operations
+.SH SYNOPSIS
+.B zpoolpilot
+.RI [ global-options ]
+.RI [ command ]
+.PP
+.B zpoolpilot plan
+.I operation
+.RI [ options ]
+.PP
+.B sudo zpoolpilot apply
+.RI [ --command-timeout " duration" ]
+.I plan.json
+.SH DESCRIPTION
+.B zpoolpilot
+collects OpenZFS, block-device, udev, SMART, ARC, and device-link information
+into a versioned snapshot. It provides a color-coded terminal dashboard,
+line-oriented and JSON status, stable drive/bay inventory, and a cached
+Prometheus exporter.
+.PP
+Supported changes are represented by typed, inspectable plans with a maximum
+15-minute lifetime. Applying a plan requires root, a real terminal, a fresh
+safety snapshot before every command, interactive confirmation, and
+before/after audit records. There is no unattended assume-yes option.
+.SH GLOBAL OPTIONS
+.TP
+.BI --config " path"
+Read configuration from
+.I path
+instead of /etc/zpoolpilot/config.toml. A root invocation accepts only a
+root-owned, singly linked regular config whose complete directory ancestor
+chain is root-owned, nonsymlinked, and not group/other-writable; configured
+writes remain inside their dedicated application subtrees.
+.TP
+.B --read-only
+Install the observer-only command policy and reject planning, apply, bay/LED
+changes, and deliberate disk wake-up.
+.TP
+.BR --color =auto|always|never
+Control ANSI color. The
+.B NO_COLOR
+environment variable also disables color.
+.TP
+.BR --version ", " -V
+Print build version information.
+.SH COMMANDS
+.TP
+.B tui [--refresh]
+Open the full-screen dashboard (the default command). Pages cover overview,
+pools/vdevs, drives/bays, datasets/settings, ARC/performance, tasks, actions,
+and command trace. Arrow keys or p/n change page, j/k scroll, 1-8 jump, r
+refreshes read-only data, ? opens help, and q quits. The Actions page explains
+commands but never mutates storage.
+.TP
+.B status [--json] [--refresh] [--include-commands]
+Show the cached status, or collect a fresh no-wake snapshot. Command traces
+contain argv and status metadata, not captured output or interactive secrets.
+.TP
+.B inventory scan [--json] [--wake]
+Collect drive identity, make/model, serial, capacity, type/transport, use, and
+bay data and update the cache. Without
+.B --wake
+SMART uses guarded ATA/SATA collection and explicit NVMe access; other
+transports require an explicit --wake refresh.
+.TP
+.B inventory list [--json]
+List drives from the cache.
+.TP
+.B inventory mappings [--json]
+List every authoritative manual mapping in deterministic drive-ID order,
+including mappings whose old drive is currently absent. A missing mapping file
+is reported as an empty list; malformed or untrusted state is an error.
+.TP
+.B inventory map --drive ID --bay LABEL [--enclosure NAME] [--slot N]
+Persist a tentative manual bay mapping for the stable drive identity. It has
+inferred confidence and no verification timestamp. Root, a real terminal, and
+yellow confirmation are required. The slot may be omitted; explicit slot zero
+is retained as a known slot.
+.TP
+.B inventory verify --drive ID [--bay LABEL] [--enclosure NAME] [--slot N]
+After a physical check, promote the supplied or currently saved values to a
+manual verified mapping with a timestamp. The explicitly supplied or inherited
+slot must be known. A canonical live type-13 SES character device must expose a
+reliable udev WWN or hardware serial, which is pinned as enclosure identity.
+.TP
+.B inventory unmap --drive EXACT_STORED_ID
+Retire one authoritative mapping so a replacement drive can reuse its physical
+bay. The argument must exactly match a stored wwn: or serial: key shown by
+.BR "inventory mappings" ;
+aliases and devnodes are not resolved, and the old disk need not be present.
+Root, a real terminal, and yellow confirmation are required. After the prompt,
+the mapping is reloaded and compare-and-deleted under the writer lock only if
+the complete stored record is unchanged. Clear any active identify LED before
+unmapping; deletion intentionally removes the slot authority needed to clear it.
+.TP
+.B inventory locate --drive ID [--state on|off]
+Set or clear a supported SES identify LED. This requires a manually verified
+mapping with timestamp, nonempty label, numeric slot, and an existing direct
+character device at canonical /dev/sgN or /dev/bsg/H:C:T:L. Inferred mappings
+and symlinks are refused. Enclosure identity is checked before confirmation and
+again immediately before dispatch. Turning the LED on requires a present,
+strongly identified drive before and after confirmation and physical
+verification no more than 15 minutes old. Turning it off accepts only the exact
+stored key shown by inventory mappings, but permits an absent drive and older
+verification so an orphaned indicator can be cleared. A timestamp more than one
+minute ahead is refused for both states. Root and a real terminal are required.
+The trusted mapping is reloaded and compared after confirmation. The command uses sg_ses
+--dev-slot-num=N.
+.PP
+Map, verify, unmap, and locate each require root, a real terminal, and yellow
+confirmation. Map, verify, and locate-on also require fresh fast no-wake safety
+discovery; locate-off and unmap intentionally use the exact stored key because
+the retired drive may be absent. Enclosure identity comes from a
+non-placeholder udev WWN or SCSI serial after proving a live SCSI type-13
+enclosure-services device; it is not inferred from the path or a direct SES
+logical-ID query. Map and verify repeat exact drive fingerprint/major:minor
+discovery after confirmation; verify also repeats the enclosure probe before
+storing.
+Always physically match the bay label and drive serial. Never pull a disk
+solely because its identify LED is lit.
+.TP
+.B plan OPERATION
+Perform fresh non-waking safety discovery, show exact commands and drive
+details, and save an owner-only JSON plan. Blocked plans are saved for
+inspection but cannot be applied. Every operation accepts \fB--out\fR
+\fIpath\fR. An ordinary user defaults to the current directory; a root
+invocation defaults to and confines output beneath the configured plan
+directory.
+.TP
+.B apply [--command-timeout DURATION] PLAN.json
+Validate, lock, revalidate, confirm, and execute an unexpired plan. Must run as
+root in a trusted terminal.
+.TP
+.B monitor collect [--profile fast|hardware|all] [--wait] [--wake] [--include-commands]
+Collect and atomically persist a snapshot. Fast collection skips SMART while
+preserving matching cached hardware data. Hardware/all collection is no-wake
+unless the interactive yellow
+.B --wake
+option is supplied.
+.TP
+.B monitor serve [--listen ADDRESS] [--max-age DURATION]
+Serve the cached snapshot at /metrics, /healthz, and /readyz. The default
+address is 127.0.0.1:9815. Readiness requires a fresh, non-partial snapshot.
+Failed metric sources remain visible as source errors while their affected
+numeric samples are omitted; successful compatibility-fallback measurements
+remain available. No hardware command runs on scrape.
+.TP
+.B doctor [--json]
+Report required and optional runtime capabilities.
+.SH PLAN OPERATIONS
+.SS Red disk and topology operations
+.TP
+.B create-pool --pool NAME --topology TYPE --drives ID[,ID...] [options]
+Create a whole-disk single, mirror, raidz1, raidz2, or raidz3 pool. Options
+include repeatable
+.BR --property " and " --dataset-property ,
+.BR --profile =general|proxmox,
+.BR --expert ,
+and native encryption by passphrase or existing secured key file. Key files
+accept
+.BR --key-format =passphrase|raw|hex.
+The single topology accepts exactly one disk.
+.TP
+.B prepare-disk --drive ID
+Remove partition-table and eligible inactive filesystem metadata. It is not a
+secure erase. Mounted, swap, LSBLK/sysfs holder, active ZFS, root, and boot
+devices block. Raw ZFS/LVM/MD/LUKS/Ceph/BitLocker/swap ownership signatures
+also block even when unmounted because their external owner is not proven
+inactive.
+.TP
+.B replace-disk --pool POOL --vdev VDEV --drive ID
+Replace a data-pool leaf with a sufficiently large unused drive. The selected
+vdev must report a nonzero authoritative size.
+.TP
+.B attach-mirror --pool POOL --vdev VDEV --drive ID
+Attach a leaf to form or widen a mirror. The selected vdev must report a
+nonzero authoritative size.
+.TP
+.B expand-raidz --pool POOL --vdev VDEV --drive ID
+Add one drive to a top-level RAIDZ vdev. Every child must report a nonzero
+authoritative size. OpenZFS 2.3 or newer is required.
+.TP
+.B add-vdev --pool POOL --topology TYPE --drives ID[,ID...]
+Add one top-level data vdev matching the existing data topology.
+.TP
+.B add-spare --pool POOL --drives ID[,ID...]
+Add one or more unused whole disks as hot spares. Every target must be at least
+as large as the pool's largest data leaf; unknown data-leaf size blocks.
+.TP
+.B replace-boot-disk --pool POOL --vdev OLD --source-drive HEALTHY --drive NEW --boot-mode systemd-boot|grub
+Run the guarded Proxmox boot replacement described below.
+.SS Yellow routine maintenance
+.TP
+.B scrub-start|scrub-stop|trim-start|trim-stop|clear-errors --pool POOL
+Create a yellow plan for exactly one
+.BR "zpool scrub" ,
+.BR "zpool scrub -s" ,
+.BR "zpool trim" ,
+.BR "zpool trim -s" ,
+or
+.B zpool clear
+command. Scrub start is blocked by active or unknown scan state, active or
+suspended manual TRIM, and unknown or uncertain mixed TRIM state. Scrub stop
+requires a confirmed active scrub. Despite its CLI name, trim-stop suspends a
+consistently active pass; it does not cancel it. Trim start begins an
+untrimmed/complete/canceled pass or resumes a consistently suspended pass.
+Unknown, mixed, or unsupported TRIM state blocks start. The pool must be
+ONLINE or DEGRADED. Boot pools are allowed with a latency/availability warning.
+.SH SAFETY
+Disk plans pin stable hardware identity, /dev/disk/by-id path, capacity,
+sector geometry, major:minor number, host identity, and pool topology.
+/dev/sdX alone is never authority. Group/other-writable, symlink, oversized,
+expired, structurally unknown, or edited plan files are rejected. A plan ID is
+exactly 32 lowercase hexadecimal characters.
+.PP
+Green operations run automatically. Yellow commands display exact argv and
+accept Enter, y, or yes at [Y/n]. Red commands require the exact
+.B yes SERIAL
+or
+.B yes FINGERPRINT
+challenge; Enter alone never approves them. External commands are dispatched
+as argv arrays without a shell. Noninteractive capture is limited to 64 MiB of
+stdout and 1 MiB of stderr; overflow fails the command.
+.PP
+Read-only monitoring can use legacy OpenZFS text output as a best-effort
+fallback. Storage planning requires complete safety-authority discovery,
+including the supported OpenZFS JSON interfaces, and fails closed otherwise.
+Pool status/list/get JSON must be structurally complete and agree exactly on
+pool name/GUID coverage; bootfs, root-dataset mountpoint, leaf-path, and scan
+authority cannot silently disappear. Unknown scan/TRIM authority blocks red
+lifecycle operations, and pool creation checks every imported pool.
+.PP
+The actual / entry in /proc/self/mountinfo is independent boot evidence. A ZFS
+root marks its source pool boot-critical even with bootfs=none or
+mountpoint=legacy. Missing, malformed, ambiguous, or unmatched root-mount
+evidence makes safety discovery partial and blocks planning.
+.PP
+Replace and attach require authoritative nonzero selected-vdev size. RAIDZ
+expansion requires it for every child. Fresh apply discovery rechecks these
+capacity inputs before dispatch. Adding spares likewise rechecks complete data-
+leaf size authority and every target against the largest data leaf.
+.PP
+Immediately before each red command, a live guard requires every command-line
+by-id disk link to remain a symlink to the pinned block-device major:minor and
+sysfs whole disk. Terminal output replaces untrusted escape/C0/C1 and Unicode
+directional controls; ANSI styling is generated internally.
+.PP
+Plans that consume a disk as a new pool member collect SMART in no-wake all
+mode. Known failed/critical target health blocks planning and is rechecked
+immediately before dispatch. Missing, sleeping, or unsupported SMART remains a
+prominent warning, not a healthy result. prepare-disk remains available for
+retiring failed media; routine maintenance uses fast discovery.
+.SH DRIVE AND SMART SEMANTICS
+/dev/disk/by-path provides an inferred controller-path label, not proof of a
+physical chassis bay. Manual inferred and verified mappings overlay cached
+discovery; only verify records physical confirmation and its timestamp. Unknown
+bays remain visible and duplicate mappings are critical findings. Use
+.B inventory mappings
+to discover an absent retired drive's exact key. If its identify LED may be
+active, use that key with
+.B inventory locate --state off
+first; then use
+.B inventory unmap
+before assigning the same bay to its replacement.
+.PP
+When persisting a snapshot, the fast collector preserves old SMART values only
+when stable ID, WWN, serial, and capacity still match. Hardware collection uses
+.B smartctl --device sat --nocheck standby,2,2
+for ATA/SATA and an explicit nvme device type for NVMe.
+Unsupported/unknown ATA power checks stop before SMART reads.
+SAS/SCSI, USB bridges, and unknown transports are skipped and shown as unknown
+unless an operator authorizes an interactive --wake refresh. If a drive sleeps, prior values retain their original timestamp
+and are marked sleeping. Never-collected data and data older than twice the
+configured hardware interval are unknown. Missing firmware fields are absent,
+not zero.
+Persisted collectors hold the shared lock from discovery through cache writes.
+Failed or canceled collection preserves the previous snapshot. Dashboard
+refreshes retain matching cached hardware readings and reevaluate their age;
+the exporter reevaluates health age and labels on each scrape.
+.PP
+A valid NVMe percentage_used field is authoritative for wear, including values
+above 100 percent. Corrected SCSI errors are not uncorrected media errors.
+ATA wear accepts
+only allowlisted normalized top-level values from 0 through 100: remaining-life
+values are converted to used life, while direct used-life values are retained.
+Raw, invalid, or disagreeing ATA values remain unknown.
+.PP
+A SMART timestamp more than one minute ahead produces an unknown finding.
+Persisted JSON snapshots with missing/far-future generation time or far-future
+SMART time are rejected and make /readyz return 503. Database-fallback
+snapshots receive the same timestamp validation, and invalid values from
+either cache do not feed telemetry carry-forward. Both cache forms require the
+supported SnapshotV1 API version.
+.PP
+Status JSON and the TUI report manual TRIM support/state/progress at leaf and
+pool level when OpenZFS provides it. Incomplete or disagreeing leaf state is
+reported as unknown or mixed rather than guessed.
+.SH PROMETHEUS
+Metrics cover host/OpenZFS/Proxmox boot mode and snapshot severity/source
+errors; pool state, space, fragmentation, I/O errors and rates, scan and manual
+TRIM progress; recursive vdev state, errors and TRIM; dataset space,
+compression ratio, and selected setting/source labels; drive
+identity/bay/capacity/use, SMART, temperature, wear and error counters;
+ARC/L2ARC; and findings.
+.PP
+Raw pool free space and dataset available are distinct. Fragmentation is an
+allocator metric, not disk damage. Encryption key locations are excluded from
+metric labels.
+.SH PROXMOX BOOT REPLACEMENT
+The dedicated boot plan requires detected Proxmox host evidence, one consistent
+mode from
+.BR "proxmox-boot-tool status" ,
+a boot-critical mirrored pool using persistent partition 3, one healthy online
+source sibling whole disk, and a clean, distinct, same-size-or-larger target.
+Source and target must have matching logical sector sizes.
+Plain grub-install layouts are unsupported.
+.PP
+Apply clones the source partition table to the target, randomizes target GUIDs,
+runs partprobe, formats and initializes target partition 2 with
+proxmox-boot-tool, then performs zpool replace using target partition 3.
+After partprobe, the live guard also proves that the partition-2 and
+partition-3 links are block devices owned by the exact planned whole disk.
+It does not repair existing ESP state, convert boot mode, wait for resilvering,
+or validate a reboot. Verify zpool and Proxmox boot status and conduct a
+controlled reboot test afterward.
+.SH FILES
+.TP
+.I /etc/zpoolpilot/config.toml
+Configuration. Unknown keys and invalid values are rejected. Under root it
+must be root-owned and not group/other-writable; its entire directory ancestor
+chain must meet the same ownership and write rules and contain no symlink.
+.TP
+.I /etc/zpoolpilot/bays.json
+Versioned authoritative manual bay mappings. The root-owned, singly linked,
+bounded regular file is locked and atomically replaced by map/verify/unmap; monitoring
+services may read but not write it. Installation seeds an empty v1 file and
+preserves it on reinstall. A malformed/untrusted file produces partial
+inventory.bays/trust status. Legacy state.db bay rows are ignored and must be
+remapped and physically verified.
+.TP
+.I /var/lib/zpoolpilot/latest.json
+Atomic monitoring snapshot cache.
+.TP
+.I /var/lib/zpoolpilot/state.db
+Shared SQLite snapshot cache state; never bay or mutation-audit authority. If
+sqlite3 is unavailable, the atomic JSON fallback is state.db.json.
+.TP
+.I /var/log/zpoolpilot/audit.jsonl
+Authoritative root-owned, root-writable JSONL before/after records for plan
+application attempts.
+.TP
+.I /run/zpoolpilot/apply.lock
+Exclusive plan-application lock.
+.TP
+.I /run/zpoolpilot/collect/collect.lock
+Shared persisted-collection and snapshot-writer lock.
+.TP
+.I /run/zpoolpilot/plans/
+Packaged short-lived plan directory used and enforced when plan creation runs
+as root. An ordinary user defaults to the current directory unless --out is
+supplied.
+.SH EXIT STATUS
+.TP
+.B 0
+Healthy status/persisted snapshot, or successful command.
+.TP
+.B 1
+Warning health; also used for an interactive decline and selected general
+command failures.
+.TP
+.B 2
+Critical health; also used for a blocked/invalid plan, failed apply, unresolved
+target, or missing required doctor capability.
+.TP
+.B 3
+Unknown/partial health or incomplete safety authority.
+.TP
+.B 64
+Invalid command usage or arguments.
+.TP
+.B 69
+Collection did not complete after snapshot persistence.
+.TP
+.B 74
+Snapshot lock or persistence failed. Unlike health exits 1-3, packaged
+collector units treat this as failure.
+.TP
+.B 77
+Denied by read-only mode, missing apply or bay-change privilege/TTY, or another
+policy gate.
+.TP
+.B 78
+Configuration loading or validation failed.
+.TP
+.B 130
+Cancelled by signal.
+.PP
+Packaged collector units declare health exits 1, 2, and 3 successful so systemd
+records the health state without reporting an operational service failure.
+.SH PRIVILEGE MODEL
+The packaged fast collector and exporter run as the unprivileged
+.B zpoolpilot
+account. The no-wake hardware collector is a short-lived root oneshot that
+still uses
+.BR --read-only .
+The exporter has no device namespace or capabilities. No service can apply a
+plan; only a foreground operator can cross the mutation boundary. Shared cache
+state is writable by the collectors, while the audit log is not writable by
+the monitoring account.
+.SH LIMITATIONS
+Automatic SES slot discovery, Proxmox storage registration, remote control,
+alerts, boot-mode conversion, and dRAID/log/special/cache-vdev lifecycle
+changes are not implemented. Existing auxiliary vdevs can be displayed.
+Physical hot-swap, SES, HBA, and boot/reboot behavior require validation on
+representative disposable hardware or virtual machines.
+.SH SEE ALSO
+.BR zpool (8),
+.BR zfs (8),
+.BR smartctl (8),
+.BR proxmox-boot-tool (1),
+.BR systemd.service (5)
+
+.SH LICENSE
+GNU General Public License version 3 or any later version (GPL-3.0-or-later).
+See /usr/share/doc/zpoolpilot/LICENSE. This program comes without warranty.

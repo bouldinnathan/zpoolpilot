@@ -1,0 +1,488 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/bouldinnathan/zpoolpilot/main/schemas/action-plan-v1.schema.json",
+  "title": "ZpoolPilot ActionPlanV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "api_version",
+    "kind",
+    "id",
+    "created_at",
+    "expires_at",
+    "host_machine_id",
+    "operation",
+    "risk",
+    "target_pool",
+    "target_vdev",
+    "topology_fingerprint",
+    "snapshot_fingerprint",
+    "blockers",
+    "warnings",
+    "expected_result",
+    "commands",
+    "confirmation"
+  ],
+  "properties": {
+    "api_version": {"const": "github.com/bouldinnathan/zpoolpilot/v1"},
+    "kind": {"const": "ActionPlan"},
+    "id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "created_at": {"$ref": "#/$defs/timestamp"},
+    "expires_at": {"$ref": "#/$defs/timestamp"},
+    "host_machine_id": {"type": "string", "minLength": 1},
+    "operation": {"$ref": "#/$defs/operation"},
+    "risk": {"enum": ["yellow-change", "red-destructive"]},
+    "target_pool": {"$ref": "#/$defs/pool_ref"},
+    "target_vdev": {"$ref": "#/$defs/vdev_ref"},
+    "source_drives": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/drive_ref"}
+    },
+    "target_drives": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/drive_ref"}
+    },
+    "desired": {"type": "object"},
+    "topology_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "snapshot_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "blockers": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "warnings": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "expected_result": {"type": "string"},
+    "commands": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/planned_command"}
+    },
+    "confirmation": {"type": "string"}
+  },
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "required": ["desired"],
+          "properties": {
+            "operation": {"const": "create-pool"},
+            "risk": {"const": "red-destructive"},
+            "desired": {"$ref": "#/$defs/desired_create_pool"},
+            "confirmation": {"type": "string", "pattern": "^yes .+$"}
+          }
+        },
+        {
+          "required": ["desired"],
+          "properties": {
+            "operation": {"const": "add-vdev"},
+            "risk": {"const": "red-destructive"},
+            "desired": {"$ref": "#/$defs/desired_add_vdev"},
+            "confirmation": {"type": "string", "pattern": "^yes .+$"}
+          }
+        },
+        {
+          "required": ["desired"],
+          "properties": {
+            "operation": {"const": "replace-boot-disk"},
+            "risk": {"const": "red-destructive"},
+            "desired": {"$ref": "#/$defs/desired_replace_boot_disk"},
+            "confirmation": {"type": "string", "pattern": "^yes .+$"}
+          }
+        },
+        {
+          "required": ["desired"],
+          "properties": {
+            "operation": {"const": "trim-start"},
+            "risk": {"const": "yellow-change"},
+            "desired": {"$ref": "#/$defs/desired_trim_start"},
+            "confirmation": {"const": ""}
+          }
+        },
+        {
+          "properties": {
+            "operation": {
+              "enum": ["prepare-disk", "replace-disk", "attach-mirror", "expand-raidz", "add-spare"]
+            },
+            "risk": {"const": "red-destructive"},
+            "desired": {"$ref": "#/$defs/desired_empty"},
+            "confirmation": {"type": "string", "pattern": "^yes .+$"}
+          }
+        },
+        {
+          "properties": {
+            "operation": {"enum": ["scrub-start", "scrub-stop", "trim-stop", "clear-errors"]},
+            "risk": {"const": "yellow-change"},
+            "desired": {"$ref": "#/$defs/desired_empty"},
+            "confirmation": {"const": ""}
+          }
+        }
+      ]
+    },
+    {
+      "oneOf": [
+        {
+          "required": ["target_drives"],
+          "properties": {
+            "operation": {"const": "create-pool"},
+            "target_pool": {"$ref": "#/$defs/new_pool_ref"},
+            "target_vdev": {"$ref": "#/$defs/empty_vdev_ref"},
+            "source_drives": {"type": "array", "maxItems": 0},
+            "target_drives": {"type": "array", "minItems": 1}
+          }
+        },
+        {
+          "required": ["target_drives"],
+          "properties": {
+            "operation": {"const": "prepare-disk"},
+            "target_pool": {"$ref": "#/$defs/empty_pool_ref"},
+            "target_vdev": {"$ref": "#/$defs/empty_vdev_ref"},
+            "source_drives": {"type": "array", "maxItems": 0},
+            "target_drives": {"type": "array", "minItems": 1, "maxItems": 1}
+          }
+        },
+        {
+          "required": ["target_drives"],
+          "properties": {
+            "operation": {"const": "replace-disk"},
+            "target_pool": {"$ref": "#/$defs/existing_pool_ref"},
+            "target_vdev": {"$ref": "#/$defs/existing_vdev_ref"},
+            "source_drives": {"type": "array", "maxItems": 1},
+            "target_drives": {"type": "array", "minItems": 1, "maxItems": 1}
+          }
+        },
+        {
+          "required": ["target_drives"],
+          "properties": {
+            "operation": {"enum": ["attach-mirror", "expand-raidz"]},
+            "target_pool": {"$ref": "#/$defs/existing_pool_ref"},
+            "target_vdev": {"$ref": "#/$defs/existing_vdev_ref"},
+            "source_drives": {"type": "array", "maxItems": 0},
+            "target_drives": {"type": "array", "minItems": 1, "maxItems": 1}
+          }
+        },
+        {
+          "required": ["target_drives"],
+          "properties": {
+            "operation": {"enum": ["add-vdev", "add-spare"]},
+            "target_pool": {"$ref": "#/$defs/existing_pool_ref"},
+            "target_vdev": {"$ref": "#/$defs/empty_vdev_ref"},
+            "source_drives": {"type": "array", "maxItems": 0},
+            "target_drives": {"type": "array", "minItems": 1}
+          }
+        },
+        {
+          "required": ["source_drives", "target_drives"],
+          "properties": {
+            "operation": {"const": "replace-boot-disk"},
+            "target_pool": {"$ref": "#/$defs/existing_pool_ref"},
+            "target_vdev": {"$ref": "#/$defs/existing_vdev_ref"},
+            "source_drives": {"type": "array", "minItems": 1, "maxItems": 1},
+            "target_drives": {"type": "array", "minItems": 1, "maxItems": 1}
+          }
+        },
+        {
+          "properties": {
+            "operation": {"enum": ["scrub-start", "scrub-stop", "trim-start", "trim-stop", "clear-errors"]},
+            "target_pool": {"$ref": "#/$defs/existing_pool_ref"},
+            "target_vdev": {"$ref": "#/$defs/empty_vdev_ref"},
+            "source_drives": {"type": "array", "maxItems": 0},
+            "target_drives": {"type": "array", "maxItems": 0}
+          }
+        }
+      ]
+    }
+  ],
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "operation": {
+      "enum": [
+        "create-pool",
+        "prepare-disk",
+        "replace-disk",
+        "replace-boot-disk",
+        "attach-mirror",
+        "expand-raidz",
+        "add-vdev",
+        "add-spare",
+        "scrub-start",
+        "scrub-stop",
+        "trim-start",
+        "trim-stop",
+        "clear-errors"
+      ]
+    },
+    "pool_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
+    },
+    "pool_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "guid"],
+      "properties": {
+        "name": {"type": "string"},
+        "guid": {"type": "string"}
+      }
+    },
+    "empty_pool_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "guid"],
+      "properties": {
+        "name": {"const": ""},
+        "guid": {"const": ""}
+      }
+    },
+    "new_pool_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "guid"],
+      "properties": {
+        "name": {"$ref": "#/$defs/pool_name"},
+        "guid": {"const": ""}
+      }
+    },
+    "existing_pool_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "guid"],
+      "properties": {
+        "name": {"$ref": "#/$defs/pool_name"},
+        "guid": {"type": "string", "minLength": 1}
+      }
+    },
+    "vdev_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "guid"],
+      "properties": {
+        "name": {"type": "string"},
+        "guid": {"type": "string"}
+      }
+    },
+    "empty_vdev_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "guid"],
+      "properties": {
+        "name": {"const": ""},
+        "guid": {"const": ""}
+      }
+    },
+    "existing_vdev_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "guid"],
+      "properties": {
+        "name": {"type": "string"},
+        "guid": {"type": "string", "minLength": 1}
+      }
+    },
+    "drive_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "by_id",
+        "major_minor",
+        "capacity_bytes",
+        "logical_sector_bytes",
+        "physical_sector_bytes"
+      ],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "wwn": {
+          "type": "string",
+          "pattern": "^(?:(?:[0-9a-f]{2}){8,32}|(?:eui|naa)\\.(?:[0-9a-f]{2}){8,32})$"
+        },
+        "serial": {"type": "string", "minLength": 6, "maxLength": 512},
+        "by_id": {
+          "type": "string",
+          "pattern": "^/dev/disk/by-id/[^\\u0000\\r\\n\\t]+$"
+        },
+        "major_minor": {"type": "string", "pattern": "^[0-9]+:[0-9]+$"},
+        "capacity_bytes": {"type": "integer", "minimum": 1},
+        "logical_sector_bytes": {
+          "enum": [512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]
+        },
+        "physical_sector_bytes": {
+          "enum": [512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]
+        },
+        "bay": {"type": "string"}
+      },
+      "anyOf": [
+        {"required": ["wwn"]},
+        {"required": ["serial"]}
+      ]
+    },
+    "planned_command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["program", "args", "risk", "reason"],
+      "properties": {
+        "program": {"type": "string", "pattern": "^[A-Za-z0-9._+-]+$"},
+        "args": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string"}
+        },
+        "risk": {"enum": ["yellow-change", "red-destructive"]},
+        "reason": {"type": "string"}
+      }
+    },
+    "desired_empty": {
+      "type": "object",
+      "maxProperties": 0,
+      "additionalProperties": false
+    },
+    "desired_create_pool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["topology", "pool_properties", "dataset_properties", "expert"],
+      "properties": {
+        "topology": {"$ref": "#/$defs/topology"},
+        "pool_properties": {"$ref": "#/$defs/pool_properties"},
+        "dataset_properties": {"$ref": "#/$defs/dataset_properties"},
+        "expert": {"type": "boolean"}
+      }
+    },
+    "desired_add_vdev": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["topology"],
+      "properties": {
+        "topology": {"$ref": "#/$defs/topology"}
+      }
+    },
+    "desired_replace_boot_disk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["boot_mode"],
+      "properties": {
+        "boot_mode": {"enum": ["systemd-boot", "grub"]}
+      }
+    },
+    "desired_trim_start": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trim_intent"],
+      "properties": {
+        "trim_intent": {"enum": ["start", "resume"]}
+      }
+    },
+    "topology": {
+      "enum": ["single", "mirror", "raidz1", "raidz2", "raidz3"]
+    },
+    "pool_properties": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ashift": {"enum": ["9", "10", "11", "12", "13", "14", "15", "16"]},
+        "autotrim": {"enum": ["on", "off"]},
+        "autoexpand": {"enum": ["on", "off"]},
+        "autoreplace": {"enum": ["on", "off"]}
+      }
+    },
+    "dataset_properties": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "compression": {
+          "type": "string",
+          "pattern": "^(off|on|lz4|zle|gzip|gzip-[1-9]|zstd|zstd-([1-9]|1[0-9]))$"
+        },
+        "dedup": {"enum": ["off", "on", "verify"]},
+        "atime": {"enum": ["on", "off"]},
+        "relatime": {"enum": ["on", "off"]},
+        "xattr": {"enum": ["on", "off", "sa"]},
+        "acltype": {"enum": ["off", "posix", "nfsv4"]},
+        "sync": {"enum": ["standard", "always"]},
+        "recordsize": {
+          "enum": [
+            "512",
+            "1024",
+            "2048",
+            "4096",
+            "8192",
+            "16384",
+            "32768",
+            "65536",
+            "131072",
+            "262144",
+            "524288",
+            "1048576",
+            "2097152",
+            "4194304",
+            "8388608",
+            "16777216",
+            "1K",
+            "2K",
+            "4K",
+            "8K",
+            "16K",
+            "32K",
+            "64K",
+            "128K",
+            "256K",
+            "512K",
+            "1M",
+            "2M",
+            "4M",
+            "8M",
+            "16M"
+          ]
+        },
+        "encryption": {
+          "enum": ["off", "on", "aes-128-ccm", "aes-192-ccm", "aes-256-ccm", "aes-128-gcm", "aes-192-gcm", "aes-256-gcm"]
+        },
+        "keyformat": {"enum": ["passphrase", "hex", "raw"]},
+        "keylocation": {
+          "type": "string",
+          "pattern": "^(prompt|file:///[^\\u0000\\r\\n]+)$"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "encryption": {"const": "off"}
+          },
+          "not": {
+            "anyOf": [
+              {"required": ["keyformat"]},
+              {"required": ["keylocation"]}
+            ]
+          }
+        },
+        {
+          "required": ["encryption", "keyformat", "keylocation"],
+          "properties": {
+            "encryption": {
+              "enum": ["on", "aes-128-ccm", "aes-192-ccm", "aes-256-ccm", "aes-128-gcm", "aes-192-gcm", "aes-256-gcm"]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "required": ["keylocation"],
+                "properties": {
+                  "keylocation": {"const": "prompt"}
+                }
+              },
+              "then": {
+                "properties": {
+                  "keyformat": {"const": "passphrase"}
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

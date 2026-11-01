@@ -1,0 +1,5 @@
+{
+  "json_format_version":[1,0],
+  "smartctl":{"version":[7,4],"exit_status":2},
+  "power_mode":{"ata_value":0,"name":"STANDBY"}
+}

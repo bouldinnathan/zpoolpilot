@@ -1,0 +1,24 @@
+{
+  "blockdevices": [
+    {
+      "name":"/dev/sda","kname":"sda","path":"/dev/sda","maj:min":"8:0","type":"disk",
+      "size":1000,"model":"ST1000","serial":"SERIAL-A","wwn":"0x5000c5000000aaaa","vendor":"ATA",
+      "rev":"A1","rota":true,"tran":"sata","log-sec":512,"phy-sec":4096,
+      "mountpoints":[null],"fstype":null,
+      "children":[{"name":"/dev/sda1","path":"/dev/sda1","type":"part","size":900,"mountpoints":[null],"fstype":"zfs_member"}]
+    },
+    {
+      "name":"/dev/sdb","kname":"sdb","path":"/dev/sdb","maj:min":"8:16","type":"disk",
+      "size":1000,"model":"ST1000","serial":"SERIAL-B","wwn":"0x5000c5000000bbbb","vendor":"SEAGATE",
+      "rev":"B2","rota":1,"tran":"sas","log-sec":512,"phy-sec":4096,
+      "mountpoints":[null],"fstype":null,
+      "children":[{"name":"/dev/sdb1","path":"/dev/sdb1","type":"part","size":900,"mountpoints":[null],"fstype":null}]
+    },
+    {
+      "name":"/dev/nvme0n1","kname":"nvme0n1","path":"/dev/nvme0n1","maj:min":"259:0","type":"disk",
+      "size":500,"model":"FAST NVME","serial":"NVME-1","wwn":"eui.0011223344556677","vendor":"ACME",
+      "rev":"3.1","rota":false,"tran":"nvme","log-sec":512,"phy-sec":512,
+      "mountpoints":[null],"fstype":null
+    }
+  ]
+}

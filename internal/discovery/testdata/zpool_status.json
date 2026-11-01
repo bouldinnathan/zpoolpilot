@@ -1,0 +1,96 @@
+{
+  "output_version": {"command":"zpool status","vers_major":0,"vers_minor":1},
+  "pools": {
+    "tank": {
+      "name":"tank",
+      "state":"DEGRADED",
+      "guid":123456789,
+      "status":"A device has experienced an error.",
+      "action":"Replace the affected device.",
+      "scan_stats": {
+        "function":"SCRUB",
+        "state":"SCANNING",
+        "to_examine":2000,
+        "examined":500,
+        "errors":1
+      },
+      "vdevs": {
+        "tank": {
+          "name":"tank",
+          "vdev_type":"root",
+          "class":"normal",
+          "state":"DEGRADED",
+          "alloc_space":1820,
+          "total_space":2000,
+          "read_errors":1,
+          "write_errors":0,
+          "checksum_errors":2,
+          "vdevs": {
+            "mirror-0": {
+              "name":"mirror-0",
+              "vdev_type":"mirror",
+              "guid":222,
+              "state":"DEGRADED",
+              "alloc_space":1820,
+              "total_space":2000,
+              "read_errors":0,
+              "write_errors":0,
+              "checksum_errors":0,
+              "vdevs": {
+                "disk-a": {
+                  "name":"disk-a",
+                  "vdev_type":"disk",
+                  "guid":333,
+                  "path":"/dev/disk/by-id/wwn-5000c5000000aaaa-part1",
+                  "state":"ONLINE",
+                  "rep_dev_size":1000,
+                  "read_errors":0,
+                  "write_errors":0,
+                  "checksum_errors":0,
+                  "trim_state":"ACTIVE",
+                  "trimmed":250,
+                  "to_trim":1000,
+                  "trim_time":1788436800,
+                  "trim_errors":0,
+                  "trim_notsup":0
+                },
+                "disk-b": {
+                  "name":"disk-b",
+                  "vdev_type":"disk",
+                  "guid":444,
+                  "path":"/dev/sdb1",
+                  "state":"FAULTED",
+                  "rep_dev_size":1000,
+                  "read_errors":5,
+                  "write_errors":1,
+                  "checksum_errors":3,
+                  "trim_state":"ACTIVE",
+                  "trimmed":500,
+                  "to_trim":1000,
+                  "trim_time":1788436800,
+                  "trim_errors":2,
+                  "trim_notsup":0
+                }
+              }
+            }
+          }
+        }
+      },
+      "cache": {
+        "nvme-cache": {
+          "name":"nvme-cache",
+          "vdev_type":"disk",
+          "guid":555,
+          "path":"/dev/nvme0n1",
+          "state":"ONLINE",
+          "rep_dev_size":500,
+          "read_errors":0,
+          "write_errors":0,
+          "checksum_errors":0,
+          "trim_notsup":1
+        }
+      },
+      "error_count":2
+    }
+  }
+}

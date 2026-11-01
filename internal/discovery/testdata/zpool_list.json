@@ -1,0 +1,18 @@
+{
+  "output_version":{"command":"zpool list","vers_major":0,"vers_minor":1},
+  "pools": {
+    "tank": {
+      "name":"tank",
+      "state":"DEGRADED",
+      "guid":123456789,
+      "properties": {
+        "size":{"value":2000,"source":{"type":"NONE","data":"-"}},
+        "allocated":{"value":1820,"source":{"type":"NONE","data":"-"}},
+        "free":{"value":180,"source":{"type":"NONE","data":"-"}},
+        "fragmentation":{"value":72,"source":{"type":"NONE","data":"-"}},
+        "capacity":{"value":91,"source":{"type":"NONE","data":"-"}},
+        "health":{"value":"DEGRADED","source":{"type":"NONE","data":"-"}}
+      }
+    }
+  }
+}

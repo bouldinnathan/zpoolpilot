@@ -1,0 +1,12 @@
+[Unit]
+Description=Collect fast ZpoolPilot metrics every minute
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=1m
+AccuracySec=5s
+Persistent=true
+Unit=zpoolpilot-collect-fast.service
+
+[Install]
+WantedBy=timers.target

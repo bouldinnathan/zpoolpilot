@@ -1,0 +1,57 @@
+# ZpoolPilot configuration. Unknown keys are rejected so misspellings fail loudly.
+# Root invocations also require this file and every directory ancestor in its
+# path to be root-owned, nonsymlinked, and not group/other-writable. Privileged
+# write paths below are confined to the dedicated /var/lib, /run, /var/log, and
+# /etc zpoolpilot subtrees.
+
+[paths]
+# Shared persistent snapshot cache database; this is neither bay nor audit
+# authority. Legacy bay rows are ignored and must be remapped. Without sqlite3,
+# ".json" is appended and the fallback file is replaced atomically.
+state = "/var/lib/zpoolpilot/state.db"
+# Shared Prometheus/TUI cache; collectors replace this file atomically.
+snapshot = "/var/lib/zpoolpilot/latest.json"
+# Versioned, root-owned authoritative manual bay mappings. Monitoring services
+# may read this file but never write it; privileged paths stay below
+# /etc/zpoolpilot. Install seeds an empty file and preserves it on reinstall.
+# Missing/legacy mappings require sudo map then physical verify in a TTY. Use
+# inventory mappings plus root/TTY unmap to retire an absent drive before its
+# replacement reuses that physical bay.
+bays = "/etc/zpoolpilot/bays.json"
+# Root plan creation is confined beneath this directory.
+plans = "/run/zpoolpilot/plans"
+# Apply and snapshot writers use separate locks.
+lock = "/run/zpoolpilot/apply.lock"
+collection_lock = "/run/zpoolpilot/collect/collect.lock"
+# Authoritative mutation before/after records. Apply requires a root-owned,
+# root-writable regular JSONL file in a protected /var/log/zpoolpilot directory.
+audit = "/var/log/zpoolpilot/audit.jsonl"
+
+[monitor]
+# Localhost by default; the exporter reads cache only and never polls disks.
+listen = "127.0.0.1:9815"
+# Reference cadence. Packaged systemd timers currently schedule at 1m/15m.
+fast_interval = "1m"
+# Also sets SMART stale-after (2x) and the default exporter readiness max age.
+# Both cache forms require SnapshotV1. Timestamps over one minute ahead of the
+# host clock are rejected; smaller skew is treated as age zero for freshness.
+hardware_interval = "15m"
+command_timeout = "15s"
+# Reserved safe default. Disk wake-up still requires an explicit interactive
+# --wake; packaged collectors always remain no-wake/read-only.
+wake_disks = false
+# Traces contain redacted argv/status metadata, never command output/secrets.
+include_command_trace = false
+
+[thresholds]
+# Percentage values apply to pool allocation and trusted normalized endurance
+# used. Raw or disagreeing ATA vendor counters remain unknown.
+capacity_warning = 80
+capacity_critical = 90
+wear_warning = 80
+wear_critical = 90
+# Celsius. Missing/untrustworthy firmware values remain unknown.
+temperature_warning_c = 55
+temperature_critical_c = 65
+# Informational allocator-fragmentation finding, not a drive-health diagnosis.
+fragmentation_advisory = 70

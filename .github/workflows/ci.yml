@@ -1,0 +1,33 @@
+name: offline-unit-ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GOENV: "off"
+      GOTOOLCHAIN: local
+      GOPROXY: "off"
+      GOSUMDB: "off"
+      GOFLAGS: -buildvcs=false -mod=readonly
+      GOCACHE: /tmp/zpoolpilot-gocache
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+      - name: Static, unit, packaging, and staged-install checks
+        run: make check
+      - name: Race-enabled unit tests
+        run: make test-race
+      - name: Verify stamped production build
+        run: make build VERSION=0.1.0-alpha.1+ci COMMIT="$GITHUB_SHA" BUILD_DATE=ci

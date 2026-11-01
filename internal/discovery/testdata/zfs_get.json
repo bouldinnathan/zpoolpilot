@@ -1,0 +1,37 @@
+{
+  "output_version":{"command":"zfs get","vers_major":0,"vers_minor":1},
+  "datasets": {
+    "tank": {
+      "name":"tank",
+      "type":"FILESYSTEM",
+      "guid":987654320,
+      "properties": {
+        "type":{"value":"filesystem","source":{"type":"NONE","data":"-"}},
+        "guid":{"value":987654320,"source":{"type":"NONE","data":"-"}},
+        "used":{"value":1100,"source":{"type":"NONE","data":"-"}},
+        "available":{"value":100,"source":{"type":"NONE","data":"-"}},
+        "referenced":{"value":100,"source":{"type":"NONE","data":"-"}},
+        "mountpoint":{"value":"/tank","source":{"type":"DEFAULT","data":"-"}}
+      }
+    },
+    "tank/ROOT/default": {
+      "name":"tank/ROOT/default",
+      "type":"FILESYSTEM",
+      "guid":987654321,
+      "properties": {
+        "type":{"value":"filesystem","source":{"type":"NONE","data":"-"}},
+        "guid":{"value":987654321,"source":{"type":"NONE","data":"-"}},
+        "used":{"value":1000,"source":{"type":"NONE","data":"-"}},
+        "available":{"value":100,"source":{"type":"NONE","data":"-"}},
+        "referenced":{"value":900,"source":{"type":"NONE","data":"-"}},
+        "logicalused":{"value":1500,"source":{"type":"NONE","data":"-"}},
+        "compressratio":{"value":"1.50x","source":{"type":"NONE","data":"-"}},
+        "mountpoint":{"value":"/","source":{"type":"LOCAL","data":"-"}},
+        "compression":{"value":"lz4","source":{"type":"INHERITED","data":"tank"}},
+        "dedup":{"value":"off","source":{"type":"DEFAULT","data":"-"}},
+        "encryption":{"value":"aes-256-gcm","source":{"type":"LOCAL","data":"-"}},
+        "keystatus":{"value":"available","source":{"type":"NONE","data":"-"}}
+      }
+    }
+  }
+}

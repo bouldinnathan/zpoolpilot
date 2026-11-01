@@ -1,0 +1,10 @@
+13 1 0x01 7 336 123456789
+name                            type data
+hits                               4 800
+misses                             4 200
+size                               4 1024
+c                                  4 2048
+c_max                              4 4096
+l2_size                            4 512
+l2_hits                            4 75
+l2_misses                          4 25

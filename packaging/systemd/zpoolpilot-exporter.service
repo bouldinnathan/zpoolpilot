@@ -1,0 +1,40 @@
+[Unit]
+Description=ZpoolPilot unprivileged Prometheus exporter
+Documentation=man:zpoolpilot(8)
+After=network.target zpoolpilot-collect-fast.service
+Wants=zpoolpilot-collect-fast.service
+
+[Service]
+ExecStart=/usr/bin/zpoolpilot --config /etc/zpoolpilot/config.toml --read-only monitor serve
+SuccessExitStatus=130
+User=zpoolpilot
+Group=zpoolpilot
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectHome=yes
+ProtectSystem=strict
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RemoveIPC=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+CapabilityBoundingSet=
+AmbientCapabilities=
+IPAddressDeny=any
+IPAddressAllow=localhost
+
+[Install]
+WantedBy=multi-user.target

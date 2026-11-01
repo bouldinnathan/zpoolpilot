@@ -1,0 +1,75 @@
+name: destructive-zfs-integration
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Confirm destruction of temporary loop-backed ZFS test pools
+        required: true
+        type: choice
+        options:
+          - DO_NOT_RUN
+          - DESTROY_TEMPORARY_ZFS_TEST_POOLS
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zpoolpilot-destructive-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  integration:
+    if: github.event.inputs.confirmation == 'DESTROY_TEMPORARY_ZFS_TEST_POOLS'
+    runs-on: [self-hosted, linux, x64, zpoolpilot-zfs-vm]
+    environment: zpoolpilot-destructive-tests
+    timeout-minutes: 20
+    env:
+      GOENV: "off"
+      GOTOOLCHAIN: local
+      GOPROXY: "off"
+      GOSUMDB: "off"
+      GOFLAGS: -buildvcs=false -mod=readonly
+    steps:
+      - uses: actions/checkout@v4
+      - name: Offline unit preflight
+        run: make test-offline
+      - name: Guarded loop-device integration suite
+        shell: bash
+        run: |
+          if [[ "$(id -u)" == 0 ]]; then
+            env \
+              ZPOOLPILOT_DESTRUCTIVE_TESTS=DESTROY_TEMPORARY_ZFS_TEST_POOLS \
+              ZPOOLPILOT_INTEGRATION_VM=ephemeral \
+              make test-integration
+          else
+            sudo env \
+              "PATH=$PATH" \
+              GOENV=off \
+              GOTOOLCHAIN=local \
+              GOPROXY=off \
+              GOSUMDB=off \
+              GOFLAGS='-buildvcs=false -mod=readonly' \
+              ZPOOLPILOT_DESTRUCTIVE_TESTS=DESTROY_TEMPORARY_ZFS_TEST_POOLS \
+              ZPOOLPILOT_INTEGRATION_VM=ephemeral \
+              make -C "$GITHUB_WORKSPACE" test-integration
+          fi
+      - name: Assert no test pool remains
+        if: always()
+        shell: bash
+        run: |
+          if [[ "$(id -u)" == 0 ]]; then
+            pool_names="$(zpool list -H -o name)"
+          else
+            pool_names="$(sudo -n zpool list -H -o name)"
+          fi
+          leftovers=''
+          while IFS= read -r pool_name; do
+            if [[ "$pool_name" == zpoolpilot_ci_* ]]; then
+              leftovers+="${pool_name}"$'\n'
+            fi
+          done <<< "$pool_names"
+          if [[ -n "$leftovers" ]]; then
+            printf 'temporary pools remain; destroy this ephemeral VM:\n%s\n' "$leftovers" >&2
+            exit 1
+          fi

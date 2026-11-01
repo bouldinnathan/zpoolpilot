@@ -1,0 +1,17 @@
+{
+  "pools": {
+    "": {
+      "guid": 1,
+      "state": "ONLINE",
+      "vdevs": {
+        "disk-a": {
+          "name": "disk-a",
+          "vdev_type": "disk",
+          "guid": 2,
+          "state": "ONLINE",
+          "path": "/dev/sda"
+        }
+      }
+    }
+  }
+}

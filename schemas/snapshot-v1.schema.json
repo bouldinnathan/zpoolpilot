@@ -1,0 +1,380 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/bouldinnathan/zpoolpilot/main/schemas/snapshot-v1.schema.json",
+  "title": "ZpoolPilot SnapshotV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "api_version",
+    "generated_at",
+    "host",
+    "pools",
+    "datasets",
+    "drives",
+    "arc",
+    "findings",
+    "source_errors",
+    "partial"
+  ],
+  "properties": {
+    "api_version": {"const": "github.com/bouldinnathan/zpoolpilot/v1"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "host": {"$ref": "#/$defs/host"},
+    "pools": {
+      "type": "array",
+      "maxItems": 1024,
+      "items": {"$ref": "#/$defs/pool"}
+    },
+    "datasets": {
+      "type": "array",
+      "maxItems": 65536,
+      "items": {"$ref": "#/$defs/dataset"}
+    },
+    "drives": {
+      "type": "array",
+      "maxItems": 8192,
+      "items": {"$ref": "#/$defs/drive"}
+    },
+    "arc": {"$ref": "#/$defs/arc"},
+    "findings": {
+      "type": "array",
+      "maxItems": 65536,
+      "items": {"$ref": "#/$defs/finding"}
+    },
+    "source_errors": {
+      "type": "array",
+      "maxItems": 8192,
+      "items": {"$ref": "#/$defs/source_error"}
+    },
+    "command_trace": {
+      "type": "array",
+      "maxItems": 8192,
+      "items": {"$ref": "#/$defs/command_trace"}
+    },
+    "partial": {"type": "boolean"}
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "severity": {
+      "enum": ["ok", "info", "warning", "critical", "unknown"]
+    },
+    "risk": {
+      "enum": ["green-read", "yellow-change", "red-destructive"]
+    },
+    "nonnegative_integer": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "nonnegative_number": {
+      "type": "number",
+      "minimum": 0
+    },
+    "string_map": {
+      "type": "object",
+      "maxProperties": 2048,
+      "additionalProperties": {"type": "string"}
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hostname"],
+      "properties": {
+        "hostname": {"type": "string"},
+        "machine_id": {"type": "string"},
+        "os": {"type": "string"},
+        "kernel": {"type": "string"},
+        "openzfs_version": {"type": "string"},
+        "proxmox_version": {"type": "string"},
+        "proxmox_node": {"type": "string"},
+        "proxmox_boot_mode": {"enum": ["systemd-boot", "grub"]}
+      }
+    },
+    "pool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "guid",
+        "state",
+        "boot_critical",
+        "allocated_bytes",
+        "free_bytes",
+        "size_bytes",
+        "capacity_percent",
+        "fragmentation_percent",
+        "read_errors",
+        "write_errors",
+        "checksum_errors",
+        "scan",
+        "trim",
+        "io",
+        "vdevs"
+      ],
+      "properties": {
+        "name": {"type": "string"},
+        "guid": {"type": "string"},
+        "state": {"type": "string"},
+        "status": {"type": "string"},
+        "action": {"type": "string"},
+        "boot_critical": {"type": "boolean"},
+        "allocated_bytes": {"$ref": "#/$defs/nonnegative_integer"},
+        "free_bytes": {"$ref": "#/$defs/nonnegative_integer"},
+        "size_bytes": {"$ref": "#/$defs/nonnegative_integer"},
+        "capacity_percent": {"$ref": "#/$defs/nonnegative_number"},
+        "fragmentation_percent": {"$ref": "#/$defs/nonnegative_number"},
+        "read_errors": {"$ref": "#/$defs/nonnegative_integer"},
+        "write_errors": {"$ref": "#/$defs/nonnegative_integer"},
+        "checksum_errors": {"$ref": "#/$defs/nonnegative_integer"},
+        "scan": {"$ref": "#/$defs/scan"},
+        "trim": {"$ref": "#/$defs/trim"},
+        "io": {"$ref": "#/$defs/io_stats"},
+        "vdevs": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/vdev"}
+        }
+      }
+    },
+    "io_stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "read_operations_per_second",
+        "write_operations_per_second",
+        "read_bytes_per_second",
+        "write_bytes_per_second"
+      ],
+      "properties": {
+        "read_operations_per_second": {"$ref": "#/$defs/nonnegative_number"},
+        "write_operations_per_second": {"$ref": "#/$defs/nonnegative_number"},
+        "read_bytes_per_second": {"$ref": "#/$defs/nonnegative_number"},
+        "write_bytes_per_second": {"$ref": "#/$defs/nonnegative_number"}
+      }
+    },
+    "scan": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "function": {"type": "string"},
+        "state": {"type": "string"},
+        "percent": {"$ref": "#/$defs/nonnegative_number"},
+        "bytes_examined": {"$ref": "#/$defs/nonnegative_integer"},
+        "bytes_total": {"$ref": "#/$defs/nonnegative_integer"},
+        "errors": {"$ref": "#/$defs/nonnegative_integer"},
+        "ended_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "trim": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "enum": ["unknown", "mixed", "unsupported", "untrimmed", "active", "suspended", "complete", "canceled"]
+        },
+        "bytes_done": {"$ref": "#/$defs/nonnegative_integer"},
+        "bytes_total": {"$ref": "#/$defs/nonnegative_integer"},
+        "percent": {"$ref": "#/$defs/nonnegative_number"},
+        "errors": {"$ref": "#/$defs/nonnegative_integer"},
+        "supported": {"type": "boolean"},
+        "action_time": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "vdev": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "state", "read_errors", "write_errors", "checksum_errors", "trim"],
+      "properties": {
+        "name": {"type": "string"},
+        "guid": {"type": "string"},
+        "type": {"type": "string"},
+        "class": {"type": "string"},
+        "state": {"type": "string"},
+        "path": {"type": "string"},
+        "stable_drive_id": {"type": "string"},
+        "read_errors": {"$ref": "#/$defs/nonnegative_integer"},
+        "write_errors": {"$ref": "#/$defs/nonnegative_integer"},
+        "checksum_errors": {"$ref": "#/$defs/nonnegative_integer"},
+        "trim": {"$ref": "#/$defs/trim"},
+        "allocated_bytes": {"$ref": "#/$defs/nonnegative_integer"},
+        "size_bytes": {"$ref": "#/$defs/nonnegative_integer"},
+        "children": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/vdev"}
+        }
+      }
+    },
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "type",
+        "used_bytes",
+        "available_bytes",
+        "referenced_bytes",
+        "logical_used_bytes",
+        "compression_ratio",
+        "properties",
+        "property_sources"
+      ],
+      "properties": {
+        "name": {"type": "string"},
+        "guid": {"type": "string"},
+        "type": {"type": "string"},
+        "used_bytes": {"$ref": "#/$defs/nonnegative_integer"},
+        "available_bytes": {"$ref": "#/$defs/nonnegative_integer"},
+        "referenced_bytes": {"$ref": "#/$defs/nonnegative_integer"},
+        "logical_used_bytes": {"$ref": "#/$defs/nonnegative_integer"},
+        "compression_ratio": {"$ref": "#/$defs/nonnegative_number"},
+        "properties": {"$ref": "#/$defs/string_map"},
+        "property_sources": {"$ref": "#/$defs/string_map"}
+      }
+    },
+    "drive": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "capacity_bytes", "bay", "health", "in_use"],
+      "properties": {
+        "id": {"type": "string"},
+        "devnode": {"type": "string"},
+        "major_minor": {"type": "string"},
+        "by_id": {"type": "string"},
+        "sysfs_path": {"type": "string"},
+        "wwn": {"type": "string"},
+        "serial": {"type": "string"},
+        "vendor": {"type": "string"},
+        "model": {"type": "string"},
+        "firmware": {"type": "string"},
+        "capacity_bytes": {"$ref": "#/$defs/nonnegative_integer"},
+        "logical_sector_bytes": {"$ref": "#/$defs/nonnegative_integer"},
+        "physical_sector_bytes": {"$ref": "#/$defs/nonnegative_integer"},
+        "transport": {"type": "string"},
+        "media_type": {"type": "string"},
+        "rotational": {"type": "boolean"},
+        "bay": {"$ref": "#/$defs/bay"},
+        "health": {"$ref": "#/$defs/drive_health"},
+        "in_use": {"type": "boolean"},
+        "use": {"type": "string"}
+      }
+    },
+    "bay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slot", "slot_known"],
+      "properties": {
+        "enclosure": {"type": "string"},
+        "enclosure_identity": {"type": "string"},
+        "label": {"type": "string"},
+        "slot": {"type": "integer", "minimum": 0},
+        "slot_known": {"type": "boolean"},
+        "source": {"type": "string"},
+        "confidence": {"enum": ["unknown", "inferred", "verified", "conflict"]},
+        "verified_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "drive_health": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["severity", "sleeping", "unsupported"],
+      "properties": {
+        "severity": {"$ref": "#/$defs/severity"},
+        "smart_passed": {"type": "boolean"},
+        "temperature_c": {"type": "number"},
+        "power_on_hours": {"$ref": "#/$defs/nonnegative_integer"},
+        "percentage_used": {"type": "number", "minimum": 0, "maximum": 100},
+        "media_errors": {"$ref": "#/$defs/nonnegative_integer"},
+        "reallocated_sectors": {"$ref": "#/$defs/nonnegative_integer"},
+        "pending_sectors": {"$ref": "#/$defs/nonnegative_integer"},
+        "offline_uncorrectable": {"$ref": "#/$defs/nonnegative_integer"},
+        "crc_error_count": {"$ref": "#/$defs/nonnegative_integer"},
+        "fresh_at": {"$ref": "#/$defs/timestamp"},
+        "sleeping": {"type": "boolean"},
+        "unsupported": {"type": "boolean"},
+        "message": {"type": "string"}
+      }
+    },
+    "arc": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "size_bytes",
+        "target_bytes",
+        "max_bytes",
+        "hits",
+        "misses",
+        "hit_ratio",
+        "l2_size_bytes",
+        "l2_hits",
+        "l2_misses"
+      ],
+      "properties": {
+        "size_bytes": {"$ref": "#/$defs/nonnegative_integer"},
+        "target_bytes": {"$ref": "#/$defs/nonnegative_integer"},
+        "max_bytes": {"$ref": "#/$defs/nonnegative_integer"},
+        "hits": {"$ref": "#/$defs/nonnegative_integer"},
+        "misses": {"$ref": "#/$defs/nonnegative_integer"},
+        "hit_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+        "l2_size_bytes": {"$ref": "#/$defs/nonnegative_integer"},
+        "l2_hits": {"$ref": "#/$defs/nonnegative_integer"},
+        "l2_misses": {"$ref": "#/$defs/nonnegative_integer"}
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "severity", "scope", "title"],
+      "properties": {
+        "id": {"type": "string"},
+        "severity": {"$ref": "#/$defs/severity"},
+        "scope": {"type": "string"},
+        "title": {"type": "string"},
+        "evidence": {"type": "string"},
+        "remediation": {"type": "string"}
+      }
+    },
+    "source_error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "kind", "message", "partial"],
+      "properties": {
+        "source": {"type": "string"},
+        "kind": {"type": "string"},
+        "message": {"type": "string"},
+        "partial": {"type": "boolean"}
+      }
+    },
+    "command_trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "program",
+        "args",
+        "capability",
+        "risk",
+        "started_at",
+        "duration_ms",
+        "exit_code",
+        "timed_out",
+        "output_hidden"
+      ],
+      "properties": {
+        "program": {"type": "string"},
+        "args": {
+          "type": ["array", "null"],
+          "maxItems": 256,
+          "items": {"type": "string"}
+        },
+        "capability": {"enum": ["observe", "mutate"]},
+        "risk": {"$ref": "#/$defs/risk"},
+        "started_at": {"$ref": "#/$defs/timestamp"},
+        "duration_ms": {"$ref": "#/$defs/nonnegative_integer"},
+        "exit_code": {"type": "integer"},
+        "timed_out": {"type": "boolean"},
+        "error": {"type": "string"},
+        "output_hidden": {"type": "boolean"}
+      }
+    }
+  }
+}

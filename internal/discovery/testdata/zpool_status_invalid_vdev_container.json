@@ -1,0 +1,10 @@
+{
+  "pools": {
+    "tank": {
+      "name": "tank",
+      "guid": 1,
+      "state": "ONLINE",
+      "vdevs": []
+    }
+  }
+}

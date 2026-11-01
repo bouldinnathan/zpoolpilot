@@ -1,0 +1,12 @@
+[Unit]
+Description=Collect ZpoolPilot SMART and enclosure metrics without waking drives
+
+[Timer]
+OnBootSec=2m
+OnUnitActiveSec=15m
+AccuracySec=1m
+Persistent=true
+Unit=zpoolpilot-collect-hardware.service
+
+[Install]
+WantedBy=timers.target
