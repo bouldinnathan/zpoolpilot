@@ -104,10 +104,28 @@ EOF
 done
 
 if command -v systemd-sysusers >/dev/null 2>&1; then
-	systemd-sysusers --root="${scratch}" >/dev/null 2>&1
+	if ! sysusers_output="$(systemd-sysusers --root="${scratch}" 2>&1)"; then
+		printf '%s\n' "${sysusers_output}" >&2
+		fail 'isolated sysusers validation failed'
+	fi
 fi
 if command -v systemd-tmpfiles >/dev/null 2>&1; then
-	systemd-tmpfiles --root="${scratch}" --create --dry-run >/dev/null 2>&1
+	if systemd-tmpfiles --help 2>&1 | grep -- '--dry-run' >/dev/null; then
+		tmpfiles_args=(--create --dry-run)
+	else
+		# systemd <256 has no dry-run. Exercise creation only in the scratch
+		# root, using the invoking user's IDs so validation needs no chown
+		# privilege. Original ownership declarations were checked above.
+		sed -E \
+			-e "s/ zpoolpilot zpoolpilot / $(id -u) $(id -g) /g" \
+			-e "s/ root zpoolpilot / $(id -u) $(id -g) /g" \
+			packaging/tmpfiles.d/zpoolpilot.conf >"${scratch}/usr/lib/tmpfiles.d/zpoolpilot.conf"
+		tmpfiles_args=(--create)
+	fi
+	if ! tmpfiles_output="$(systemd-tmpfiles --root="${scratch}" "${tmpfiles_args[@]}" 2>&1)"; then
+		printf '%s\n' "${tmpfiles_output}" >&2
+		fail 'isolated tmpfiles validation failed'
+	fi
 fi
 
 filter_sandbox_noise() {

@@ -130,7 +130,10 @@ threshold of 7.0 (`--threshold=70`, in tenths). The isolated root includes
 minimal fixtures for external systemd targets; packaged units are verified
 without disabling their default dependencies. It validates sysusers
 and tmpfiles declarations in a temporary synthetic root so the real machine is
-not changed.
+not changed. For systemd versions before 256, which lack `--dry-run`, tmpfiles
+creation is exercised only in that temporary root with the invoker's numeric
+IDs; the original ownership declarations are checked separately. Errors from
+sysusers/tmpfiles validation retain their diagnostics.
 
 `scripts/check-install.sh` stages `make install` below a temporary directory,
 checks paths and modes, executes the staged binary's version command, and
